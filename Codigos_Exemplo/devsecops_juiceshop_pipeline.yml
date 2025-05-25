@@ -1,0 +1,226 @@
+name: DevSecOps Pipeline para OWASP Juice Shop
+
+on:
+  push:
+    branches:
+      - develop # Branch principal do Juice Shop
+      - main # Caso o leitor use 'main' em seu fork
+  pull_request:
+    branches:
+      - develop
+      - main
+  workflow_dispatch: # Permite acionamento manual
+
+jobs:
+  # === ETAPA DE LINTING E FORMATAÇÃO (PARA ARQUIVOS DE CONFIGURAÇÃO E SCRIPTS, SE HOUVER) ===
+  # O Juice Shop em si é mais complexo para um linting completo de frontend/backend aqui
+  # Focaremos em linting de arquivos da pipeline ou scripts auxiliares, se existirem.
+  # Para um projeto real, teríamos linting específico para o frontend Angular e backend Node.js.
+  lint-files:
+    name: Linting de Arquivos da Pipeline
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Lint YAML files (ex: este próprio workflow)
+        uses: ibiqlik/action-yamllint@v3
+        with:
+          file_or_dir: .github/workflows/
+          config_file: .yamllint.yml # Opcional: Crie um arquivo .yamllint.yml para configurar o linter
+
+  # === ETAPA DE ANÁLISE ESTÁTICA DE SEGURANÇA (SAST) ===
+  sast-analysis:
+    name: Análise Estática de Segurança (SAST)
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write # Para enviar resultados ao GitHub Security
+    steps:
+      - name: Checkout do código Juice Shop
+        uses: actions/checkout@v4
+        # Se o leitor estiver rodando no seu fork do Juice Shop oficial:
+        # with:
+        #   repository: ${{ github.repository }} # Usa o repo onde o workflow está rodando
+        #   ref: ${{ github.ref }}
+        # Se for para apontar sempre para o oficial (menos útil para o leitor testar suas modificações):
+        with:
+           repository: 'juice-shop/juice-shop'
+           ref: 'develop' # Ou uma tag de release específica para consistência
+
+      # SAST com Semgrep (ótimo para JavaScript, TypeScript, e outras linguagens do Juice Shop)
+      - name: Executar Semgrep
+        uses: semgrep/semgrep-action@v1
+        with:
+          # publishToken: ${{ secrets.SEMGREP_APP_TOKEN }} # Opcional: se usar o dashboard do Semgrep
+          config: "p/default p/javascript p/typescript p/nodejsscan" # Conjuntos de regras relevantes
+          generateSarif: true # Gera saída SARIF para integração com GitHub Security
+
+      - name: Upload do resultado SARIF do Semgrep
+        if: always() # Garante o upload mesmo que Semgrep encontre algo e falhe (dependendo da config)
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep-juiceshop
+
+  # === ETAPA DE ANÁLISE DE COMPOSIÇÃO DE SOFTWARE (SCA) ===
+  sca-analysis:
+    name: Análise de Composição de Software (SCA)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout do código Juice Shop
+        uses: actions/checkout@v4
+        with:
+           repository: 'juice-shop/juice-shop'
+           ref: 'develop'
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18' # Use uma versão LTS compatível com o Juice Shop
+
+      - name: Instalar dependências do frontend (se separado) e backend
+        run: |
+          # O Juice Shop pode ter um setup mais complexo, este é um exemplo simplificado
+          # Pode ser necessário navegar para subdiretórios se o package.json não estiver na raiz
+          npm ci # Usa package-lock.json para instalações consistentes
+
+      # Exemplo com NPM Audit
+      - name: Executar NPM Audit e gerar SARIF
+        run: |
+          npm audit --json > npm-audit-results.json || true
+          # Converter o JSON do npm audit para SARIF (requer uma ferramenta/script customizado)
+          # Exemplo de ferramenta (pode precisar instalar): npm install -g npm-audit-sarif-formatter
+          # npm-audit-sarif-formatter -i npm-audit-results.json -o npm-audit.sarif || echo "Falha ao converter npm audit para SARIF"
+          echo "Conversão de NPM Audit para SARIF requer ferramenta externa ou script. Pulando upload SARIF por enquanto."
+          # Como alternativa, usar o OWASP Dependency-Check que gera SARIF:
+
+      # Exemplo com OWASP Dependency-Check (requer Java)
+      - name: Configurar Java para Dependency-Check
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '11' # Ou a versão que o Dependency-Check CLI preferir
+
+      - name: Download OWASP Dependency-Check
+        run: |
+          DC_VERSION="9.0.9" # Verifique a última versão
+          wget https://github.com/jeremylong/DependencyCheck/releases/download/v${DC_VERSION}/dependency-check-${DC_VERSION}-release.zip
+          unzip dependency-check-${DC_VERSION}-release.zip
+
+      - name: Executar OWASP Dependency-Check
+        run: |
+          ./dependency-check/bin/dependency-check.sh \
+            --scan . \
+            --project "OWASP-Juice-Shop" \
+            --format SARIF \
+            --out dependency-check-results.sarif \
+            --enableExperimental \
+            --failOnCVSS 7 || true # Falha se encontrar CVE com score CVSS 7 ou maior, mas continua para upload
+
+      - name: Upload do resultado SARIF do Dependency-Check
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: dependency-check-results.sarif
+          category: sca-juiceshop
+
+  # === ETAPA DE SCAN DE SEGREDOS ===
+  secrets-scan:
+    name: Varredura de Segredos
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do código Juice Shop (com histórico completo)
+        uses: actions/checkout@v4
+        with:
+           repository: 'juice-shop/juice-shop'
+           ref: 'develop'
+           fetch-depth: 0 # Crucial para Gitleaks analisar todo o histórico
+
+      - name: Executar Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Para reports mais ricos, se a action suportar
+        with:
+          # report_format: 'sarif' # Verifique se a action suporta SARIF diretamente
+          # report_path: 'gitleaks-report.sarif'
+          fail: false # Para fins didáticos, não falhar o build
+
+  # === ETAPA DE SCAN DE IMAGEM DE CONTAINER (USANDO IMAGEM OFICIAL DO JUICE SHOP) ===
+  scan-official-juice-shop-image:
+    name: Scan da Imagem Docker Oficial do Juice Shop
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write # Para fazer upload dos resultados SARIF
+    steps:
+      - name: Checkout do código (apenas para o arquivo de workflow em si)
+        uses: actions/checkout@v4
+
+      - name: Scan da Imagem Docker Oficial com Trivy
+        uses: aquasecurity/trivy-action@0.20.0
+        with:
+          image-ref: 'bkimminich/juice-shop:latest' # Usar a imagem oficial mais recente
+          format: 'sarif'
+          output: 'trivy-juiceshop-official-results.sarif'
+          severity: 'CRITICAL,HIGH' # Reportar apenas vulnerabilidades críticas e altas
+          ignore-unfixed: true # Opcional: não falhar para vulnerabilidades sem correção disponível
+          exit-code: '0' # Para fins didáticos, não falhar o build mesmo se encontrar algo
+
+      - name: Upload do resultado SARIF do Trivy (Imagem Oficial)
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-juiceshop-official-results.sarif'
+          category: trivy-juiceshop-image
+
+  # === ETAPA DE TESTES DE SEGURANÇA DINÂMICOS (DAST) - OWASP ZAP ===
+  dast-analysis:
+    name: Análise Dinâmica (DAST com ZAP no Juice Shop)
+    runs-on: ubuntu-latest
+    # Necessita que o Juice Shop esteja rodando e acessível
+    steps:
+      - name: Checkout do código (para o arquivo de regras do ZAP)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }} # Pega o arquivo do fork do leitor
+
+      - name: Iniciar OWASP Juice Shop Docker container
+        run: |
+          docker pull bkimminich/juice-shop:latest
+          docker run -d --name juice-shop-dast -p 3000:3000 bkimminich/juice-shop:latest
+          echo "Aguardando Juice Shop iniciar..."
+          # Loop simples para esperar o Juice Shop responder antes de iniciar o ZAP
+          timeout 120s bash -c 'until curl -s http://localhost:3000 > /dev/null; do echo -n "."; sleep 5; done'
+          echo "Juice Shop iniciado!"
+
+
+      - name: Executar OWASP ZAP Baseline Scan no Juice Shop
+        uses: zaproxy/action-baseline@v0.10.0
+        with:
+          target: 'http://localhost:3000'
+          rules_file_name: '.zap_juiceshop_rules.tsv' # Opcional: crie este arquivo no seu repo para ignorar alertas
+          cmd_options: '-j -T 120' # AJAX spider ativado, aumenta timeout do spider para 120s
+          # token: ${{ secrets.GITHUB_TOKEN }} # Opcional, para criar issues
+          # issue_title: 'Vulnerabilidades ZAP Encontradas no Juice Shop'
+          fail_action: false # Para fins didáticos, não falhar o workflow
+
+      - name: Parar e remover o container do Juice Shop
+        if: always() # Executa mesmo se os steps anteriores falharem
+        run: |
+          docker stop juice-shop-dast || true
+          docker rm juice-shop-dast || true
+
+  # === ETAPA DE NOTIFICAÇÃO (Exemplo simples) ===
+  # Este job só executa se algum dos jobs anteriores (listados em 'needs') falhar.
+  notify-on-failure:
+    name: Notificar em Caso de Falha
+    if: failure()
+    needs: [lint-files, sast-analysis, sca-analysis, secrets-scan, scan-official-juice-shop-image, dast-analysis]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enviar notificação de falha
+        run: |
+          echo "::error::Um ou mais jobs da pipeline DevSecOps para o Juice Shop falharam!"
+          echo "Verifique os detalhes da execução em: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
