@@ -1,0 +1,15 @@
+# Dockerfile.insecure - Um exemplo com uma má prática comum
+
+# Usando uma base comum
+FROM ubuntu:22.04
+
+# MÁ PRÁTICA: Executar processos como usuário root dentro do container.
+# Se um atacante comprometer a aplicação, ele terá privilégios de root dentro do container.
+USER root
+
+RUN apt-get update && apt-get install -y curl
+
+WORKDIR /app
+COPY . .
+
+CMD ["echo", "Container executando como root!"]

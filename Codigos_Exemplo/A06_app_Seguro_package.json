@@ -1,0 +1,9 @@
+// package.json (Corrigido)
+{
+  "name": "minha-app-segura",
+  "version": "1.0.0",
+  "dependencies": {
+    "express": "^4.18.2", // Versão mais recente e segura
+    "lodash": "^4.17.21" // CORREÇÃO: Versão atualizada do lodash sem as vulnerabilidades conhecidas
+  }
+}

@@ -1,0 +1,5 @@
+# .gitleaks.toml
+[allowlist]
+paths = [
+    '''\.gitleaks\.toml$'''
+]

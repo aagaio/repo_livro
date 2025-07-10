@@ -1,0 +1,8 @@
+# .pre-commit-config.yaml
+# Documentação de referência: https://pre-commit.com/
+repos:
+  - repo: https://github.com/semgrep/semgrep
+    rev: v1.50.0  # Use a versão mais recente e estável do Semgrep
+    hooks:
+      - id: semgrep
+        args: ['--config=auto', '--error']

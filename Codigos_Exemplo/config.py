@@ -1,0 +1,1 @@
+API_KEY = "sk_test_123abc456def"

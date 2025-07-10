@@ -1,0 +1,11 @@
+# .pre-commit-config.yaml
+# Configuração robusta para pre-commit hooks
+
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.2
+    hooks:
+      - id: gitleaks
+        name: Detect hardcoded secrets
+        entry: gitleaks detect --source . --no-git -v
+        description: "Scans for hardcoded secrets like passwords, API keys, and tokens."

@@ -1,0 +1,7 @@
+rules:
+  - id: hardcoded-api-key
+    message: "Chave de API encontrada diretamente no código. Use um cofre de segredos."
+    languages: [python]
+    severity: ERROR
+    patterns:
+      - pattern: API_KEY = "..."

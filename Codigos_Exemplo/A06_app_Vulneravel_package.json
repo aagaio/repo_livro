@@ -1,0 +1,10 @@
+// package.json (Vulnerável)
+{
+  "name": "minha-app-vulneravel",
+  "version": "1.0.0",
+  "dependencies": {
+    "express": "^4.17.1",
+    "lodash": "4.17.10" // ANTIPADRÃO: Versão antiga do lodash com vulnerabilidades conhecidas
+                       // Ex: CVE-2019-10744, CVE-2018-16487 (em versões anteriores a 4.17.11/15)
+  }
+}
