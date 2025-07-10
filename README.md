@@ -23,9 +23,7 @@ Nosso objetivo é que você possa não apenas ler, mas **fazer**. Aqui, você en
 
 Para facilitar sua navegação, o repositório está organizado de forma a espelhar a estrutura do livro:
 
-*   **/Codigos_Exemplo**: Contém trechos de código e arquivos de configuração utilizados nos capítulos para ilustrar conceitos específicos (ex: código vulnerável vs. corrigido). Os nomes dos arquivos são autodescritivos.
-    
-*   **/Laboratorio_Final**: O coração prático deste repositório. Aqui você encontrará todo o material para executar a **Parte VII** do livro, construindo uma pipeline DevSecOps completa do zero com GitHub Actions e OWASP Juice Shop.
+*   **/Codigos_Exemplo**: Contém trechos de código e arquivos de configuração utilizados nos capítulos para ilustrar conceitos específicos (ex: código vulnerável vs. corrigido). Os nomes dos arquivos são autodescritivos. Nesta pasta você também encontrará todo o material para executar a **Parte VII** do livro, construindo uma pipeline DevSecOps completa do zero com GitHub Actions e OWASP Juice Shop.
 
 ---
 
