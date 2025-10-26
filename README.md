@@ -1,6 +1,6 @@
 # 📖 Repositório Oficial do Livro: Engenharia de Software Seguro com DevSecOps
 
-![Capa do Livro](caminho/para/sua/imagem_da_capa.png)
+![Capa do Livro](capa_livro.png)
 
 ## Bem-vindo(a), Mestre Construtor(a)!
 
@@ -15,7 +15,7 @@ Nosso objetivo é que você possa não apenas ler, mas **fazer**. Aqui, você en
 "Engenharia de Software Seguro com DevSecOps" é um guia completo para arquitetos, desenvolvedores e líderes técnicos que buscam integrar a segurança de forma inteligente e eficaz no ciclo de vida do desenvolvimento de software. A obra vai além das ferramentas, focando na mudança cultural e estratégica necessária para construir aplicações verdadeiramente resilientes.
 
 **Ainda não tem o seu exemplar?** Garanta já o seu e junte-se a nós nesta jornada!
-➡️ **[Adquira o livro aqui!](https://#)**
+➡️ **[Adquira o livro aqui!](https://clubedeautores.com.br/livro/engenharia-de-software-seguro-com-devsecops)**
 
 ---
 
